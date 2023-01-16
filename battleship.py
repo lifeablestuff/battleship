@@ -1,60 +1,80 @@
 from fltk import *
-import socket
+import socket, sys
 
 class game(Fl_Window):
 	def __init__(self,w,h,l):
 		Fl_Window.__init__(self,300,300,w,h,l)
 		self.begin()
-		self.address = Fl_Input(80,40,150,20,'address')
-		self.port = Fl_Input(80,40,150,20,'port')
-		self.address.when(FL_WHEN_ENTER_KEY)
-		self.address.callback(self.get_addr,'address',self.address.value())
-		self.port.when(FL_WHEN_ENTER_KEY)
-		self.address.callback(self.get_addr,'port',self.port.value())
-		self.address.hide()
-		self.port.hide()
-		self.ip = None
-		self.port_val = None
+		self.shipimg = Fl_PNG_Image('ship.png').copy(50,50)
+		self.hitimg = Fl_PNG_Image('hit.png').copy(50,50)
+		self.seaimg = Fl_PNG_Image('blank.png').copy(50,50)
+		self.miss_img = Fl_PNG_Image('miss.png').copy(50,50)
 		
-		self.bl = []
-		for row in range(10):
-			for col in range(10):
-				self.bl.append(Fl_Button(col*40+20,row*40+80,40,40))
-				#elf.bl[-1].callback(self.button_click)
+		self.cords = []
+		self.clientbl = []
+		self.oppbl = []
+		self.ships = []
+		for row in range(5):
+			for col in range(5):
+				self.clientbl.append(Fl_Button(col*50+20,row*50+80,50,50))
+				self.clientbl[-1].image(self.seaimg)
+				#self.bl[-1].callback(self.button_click)
+				#num += 1
+				self.cords.append([row,col])
+		
+		for row in range(5):
+			for col in range(5):
+				self.oppbl.append(Fl_Button(col*50+400,row*50+80,50,50))
+				self.oppbl[-1].image(self.seaimg)
+				#self.oppbl[-1].callback(self.button_click)
 				#num += 1
 				#self.cords.append([row,col])
+		self.confirm = Fl_Button(20,350,80,40,'ready')
+		self.you = Fl_Box(100,20,80,40,'You')
+		self.enemy = Fl_Box(500,20,80,40,'Enemy')
+		self.confirm.hide()
+		self.redraw()
+		self.end()
+		self.sock = None
+		'''
+		self.host = sys.argv[2]
+		self.port=int(sys.argv[3])
+		self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+		if sys.argv[1] == "server":
+			self.sock.bind((self.host, self.port)) # servers bind
 		
-		for row in range(10):
-			for col in range(10):
-				self.bl.append(Fl_Button(col*40+480,row*40+80,40,40))
-				#elf.bl[-1].callback(self.button_click)
-				#num += 1
-				#self.cords.append([row,col])
 		
-		self.find_game = Fl_Button(20,10,70,30)
-		self.find_game.label('connect')
-		self.find_game.callback(self.get_addr,'callback')
-		
-		
-	def get_addr(self,w,who,value=None):
-		print(who)
-		if value == None:
-			self.address.show()
+		fd=self.sock.fileno()
+		Fl.add_fd( fd, self.receive_data)
+		self.confirm_conn()
+		'''
+	def confirm_conn(self):
+		if sys.argv[2] == 'server':
 			return None
+		
+		else:
+			self.sock.sendto('connect',(self.host,self.port))
+		
+	def recv_data(self,fd):
+		message = []
+		(text, self.addr)=self.s.recvfrom(1024)
+		message = (text.decode())
+		
+		if message == 'connect':
+			self.sock.sendto('confirmed',(self.addr))
+			fl_message('a player has connected')
+			fl_message('planning phase has started')
 			
-		elif who == 'address':
-			self.address = value
-			self.address.hide()
-			self.port.show()
-		elif who == 'port':
-			try:
-				self.port_val = int(value)
+		elif message == 'confirmed':
+			fl_message('connection confirmed')
+			fl_message('planning phase has started')
 			
-			except:
-				fl_message('please enter a valid port')
-			
-			
+	def planning_phase(self,wid):
+		return None
 	
-battleship = game(900,500,'game')
+		
+	
+	
+battleship = game(800,800,'game')
 battleship.show()
 Fl.run()
