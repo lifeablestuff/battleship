@@ -21,7 +21,7 @@ class game(Fl_Window):
 				self.clientbl[-1].callback(self.comms_test)
 				#self.bl[-1].callback(self.button_click)
 				#num += 1
-				self.cords.append([row,col])
+				self.cords.append([str(row),str(col)])
 		
 		for row in range(5):
 			for col in range(5):
@@ -30,6 +30,7 @@ class game(Fl_Window):
 				#self.oppbl[-1].callback(self.button_click)
 				#num += 1
 				#self.cords.append([row,col])
+				
 		self.confirm = Fl_Button(110,500,80,40,'ready')
 		self.you = Fl_Box(100,110,80,40,'You')
 		self.enemy = Fl_Box(500,110,80,40,'Enemy')
@@ -38,7 +39,9 @@ class game(Fl_Window):
 		self.game_message.label('Game message')
 		#self.game_message.hide()
 		self.redraw()
+		# delete this shit later
 		self.allow_conn = Fl_Button(260,80,150,40,'Allow connection')
+		self.allow_conn.hide()
 		self.end()
 		self.sock = None
 		self.game_state = 'Inactive'
@@ -61,10 +64,9 @@ class game(Fl_Window):
 			
 		
 	def acceptConnection(self, fdl): #runs when data comes to socket s
-		conn, raddr = self.sock.accept()
-		fd=conn.fileno() #file descriptor for new established connection
+		self.conn, raddr = self.sock.accept()
+		fd=self.conn.fileno() #file descriptor for new established connection
 		Fl.add_fd(fd, self.recv_data)
-		self.other_person=conn #add fd(key) and conn(value) to connD dict
 		
 
 	def confirm_conn(self):
@@ -75,8 +77,9 @@ class game(Fl_Window):
 			self.sock.sendto('connect',(self.host,self.port))
 		
 	def recv_data(self,fd):
-		data= self.conn_to_client.recv(1024)
-		print(data)
+		data= self.conn.recv(1024).decode()
+		info = [data[0],data[1]]
+		print(info)
 
 	def receive_data(self,fd):
 		data=self.sock.recv(1024)
@@ -84,18 +87,29 @@ class game(Fl_Window):
 
 	def planning_phase(self):
 		self.game_message.show()
-		self.isplanning = 'Planning'
+		self.game_state = 'Planning'
 	
 	def but_callback(self,wid):
-		if self.isplanning == 'Planning': #checking if still planning
+		if self.game_state== 'Planning': #checking if still planning
 			if len(self.boats) < 4:
 				if wid in self.oppbl:
 					return None
 				self.boats.append(self.cords[self.client_but.index(wid)])
+				
+		elif self.game_state == 'Attacking':
+			self.comms_test(wid)
 	
 	def comms_test(self,wid):
-		self.sock.sendall((self.cords[self.clientbl.index(wid)]).encode())
-
+		print(self.cords[self.clientbl.index(wid)])
+		if sys.argv[1] == 'client':	
+			self.sock.sendall((self.cords[self.clientbl.index(wid)][0]).encode())
+			self.sock.sendall((self.cords[self.clientbl.index(wid)][1]).encode())
+			#self.sock.sendall([self.cords[self.clientbl.index(wid)][0].encode(),self.cords[self.clientbl.index(wid)[1]].encode()])
+		else:
+			self.conn.sendall((self.cords[self.clientbl.index(wid)][0]).encode())
+			self.conn.sendall((self.cords[self.clientbl.index(wid)][1]).encode())
+			#self.conn.sendall([self.cords[self.clientbl.index(wid)][0].encode(),self.cords[self.clientbl.index(wid)[1]].encode()])
+			
 
 	
 	
