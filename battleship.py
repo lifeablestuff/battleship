@@ -14,11 +14,13 @@ class game(Fl_Window):
 		self.clientbl = []
 		self.oppbl = []
 		self.ships = []
+		self.ships_taken_out = []
+		self.what_is_op_doing = ''
 		for row in range(5):
 			for col in range(5):
 				self.clientbl.append(Fl_Button(col*50+20,row*50+140,50,50))
 				self.clientbl[-1].image(self.seaimg)
-				self.clientbl[-1].callback(self.comms_test)
+				self.clientbl[-1].callback(self.but_callback)
 				#self.bl[-1].callback(self.button_click)
 				#num += 1
 				self.cords.append([str(row),str(col)])
@@ -27,7 +29,8 @@ class game(Fl_Window):
 			for col in range(5):
 				self.oppbl.append(Fl_Button(col*50+400,row*50+140,50,50))
 				self.oppbl[-1].image(self.seaimg)
-				#self.oppbl[-1].callback(self.button_click)
+				self.oppbl[-1].callback(self.but_callback)
+				
 				#num += 1
 				#self.cords.append([row,col])
 				
@@ -45,6 +48,9 @@ class game(Fl_Window):
 		self.end()
 		self.sock = None
 		self.game_state = 'Inactive'
+		self.game_message.hide()
+		# delete this too
+		self.confirm.hide()
 		
 		conn_to_client = None
 		
@@ -52,49 +58,67 @@ class game(Fl_Window):
 		port = 5555
 		self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM) #fd=3
 		if sys.argv[1] == 'server':
-			self.sock.bind((host, port))
+			self.sock.bind((sys.argv[2],int(sys.argv[3])))
 			self.sock.listen()
 			fdl=self.sock.fileno() #listening fd
 			Fl.add_fd(fdl, self.acceptConnection) 
 		
 		elif sys.argv[1] == 'client':
-			self.sock.connect((host,port))
+			self.sock.connect((sys.argv[2],int(sys.argv[3])))
 			self.fd=self.sock.fileno()
 			Fl.add_fd(self.fd, self.receive_data)
+			self.sock.sendall('hi'.encode())
+			self.planning_phase()
 			
 		
 	def acceptConnection(self, fdl): #runs when data comes to socket s
 		self.conn, raddr = self.sock.accept()
 		fd=self.conn.fileno() #file descriptor for new established connection
-		Fl.add_fd(fd, self.recv_data)
+		Fl.add_fd(fd, self.receive_data)
 		
 
-	def confirm_conn(self):
-		if sys.argv[2] == 'server':
-			return None
-		
-		else:
-			self.sock.sendto('connect',(self.host,self.port))
-		
-	def recv_data(self,fd):
-		data= self.conn.recv(1024).decode()
-		info = [data[0],data[1]]
-		print(info)
 
 	def receive_data(self,fd):
-		data=self.sock.recv(1024)
-		print(data)
+		if sys.argv[1] == 'server':
+			data = self.conn.recv(1024).decode()
+			if data == 'hi':
+				self.planning_phase()
+				return None
+			elif data == 'Attacking' and self.game_state == 'Attacking':
+				self.game_message('Attacking')
+				self.redraw()
+				return None
+				
+		else:
+			data=self.sock.recv(1024).decode()
+			if data == 'Attacking' and self.game_state == 'Attacking':
+				self.game_message('Attacking')
+				self.redraw()
+				return None
+			
+		info = [data[0],data[1]]
+		print(info)
 
 	def planning_phase(self):
 		self.game_message.show()
 		self.game_state = 'Planning'
+		self.game_message.label(self.game_state)
+		self.redraw()
 	
 	def but_callback(self,wid):
 		if self.game_state== 'Planning': #checking if still planning
-			if len(self.boats) < 4:
+			if len(self.ships) < 4:
 				if wid in self.oppbl:
 					return None
-				self.boats.append(self.cords[self.client_but.index(wid)])
+				self.ships.append(self.cords[self.clientbl.index(wid)])
+				wid.image(self.shipimg)
+				wid.redraw()
+				if len(self.ships) == 4:
+					if sys.argv[1] == 'server':
+						self.conn.sendall('Attack'.encode())
+					else:
+						self.sock.sendall('Attack'.encode())
+				self.game_state = 'Attack'
 				
 		elif self.game_state == 'Attacking':
 			self.comms_test(wid)
@@ -110,6 +134,7 @@ class game(Fl_Window):
 			self.conn.sendall((self.cords[self.clientbl.index(wid)][1]).encode())
 			#self.conn.sendall([self.cords[self.clientbl.index(wid)][0].encode(),self.cords[self.clientbl.index(wid)[1]].encode()])
 			
+	
 
 	
 	
