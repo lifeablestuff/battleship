@@ -17,14 +17,11 @@ class game(Fl_Window):
 		self.ships_taken_out = []
 		self.opp = ''
 		self.turn = 'server'
-		self.total_data = []
 		for row in range(5):
 			for col in range(5):
 				self.clientbl.append(Fl_Button(col*50+20,row*50+140,50,50))
 				self.clientbl[-1].image(self.seaimg)
 				self.clientbl[-1].callback(self.but_callback)
-				#self.bl[-1].callback(self.button_click)
-				#num += 1
 				self.cords.append([str(row),str(col)])
 		
 		for row in range(5):
@@ -33,14 +30,11 @@ class game(Fl_Window):
 				self.oppbl[-1].image(self.seaimg)
 				self.oppbl[-1].callback(self.but_callback)
 				
-				#num += 1
-				#self.cords.append([row,col])
 				
 		self.you = Fl_Box(100,110,80,40,'You')
 		self.enemy = Fl_Box(500,110,80,40,'Enemy')
 		self.game_message = Fl_Box(300,20,150,40)
 		self.game_message.label('Waiting for opponent')
-		#self.game_message.hide()
 		self.redraw()
 		self.end()
 		self.sock = None
@@ -89,32 +83,22 @@ class game(Fl_Window):
 		
 		if sys.argv[1] == 'server':
 			data = self.conn.recv(1024).decode()
-			if data == 'hie':
-				self.planning_phase()
-				return None
-			elif data == 'Attacking':
-				if self.game_state == 'Waiting':
-					self.game_message.label('Attacking')
-					self.game_state ='Attacking'
-					fl_message('Your turn')
-					self.redraw()
-				else:
-					self.opp = 'ready'
-				return None
 		else:
-			data=self.sock.recv(1024).decode()
-			if data == 'Attacking':
-				if self.game_state == 'Waiting':
-					self.game_message.label('Attacking')
-					self.game_state = 'Attacking'
-					fl_message("Opponent's turn")
-					self.redraw()
-				else:
-					self.opp = 'ready'
-				return None
-		print('this is data')
-		print(data)
+			data = self.sock.recv(1024).decode()
 		
+		if data == 'hie': # confirming the opponent has connected
+			self.planning_phase()
+			return None
+		elif data == 'Attacking': # setup for attacking phase
+			if self.game_state == 'Waiting':
+				self.game_message.label('Attacking')
+				self.game_state ='Attacking'
+				fl_message('Your turn')
+				self.redraw()
+			else:
+				self.opp = 'ready'
+			return None
+
 		
 				
 		if data[2] == 'a':
@@ -160,7 +144,7 @@ class game(Fl_Window):
 						self.sock.sendall('Lose'.encode())
 						fl_message('You won')
 						
-		elif data[2] == 'm':
+		elif data[2] == 'm': 
 			self.oppbl[self.cords.index([data[0],data[1]])].image(self.miss_img)
 			self.oppbl[self.cords.index([data[0],data[1]])].deactivate()
 			self.oppbl[self.cords.index([data[0],data[1]])].redraw()
@@ -169,16 +153,15 @@ class game(Fl_Window):
 		
 		self.redraw()
 
-		print(self.game_state)
 		
-	def planning_phase(self):
+	def planning_phase(self): # setup for players to place down their ships
 		self.game_message.show()
 		self.game_state = 'Planning'
 		self.game_message.label(self.game_state)
 		self.redraw()
 
 	def but_callback(self,wid):
-		print(self.game_state) 
+
 		if self.game_state== 'Planning': #checking if still placing ships
 			if len(self.ships) < 4:
 				if wid in self.oppbl:
@@ -209,7 +192,6 @@ class game(Fl_Window):
 			self.send_info(wid)
 
 	def send_info(self,wid):
-		print(sys.argv[1])
 		if self.turn != sys.argv[1]: # checking if it is your turn or not
 			fl_message('Not your turn')
 			return None
@@ -217,7 +199,6 @@ class game(Fl_Window):
 			return None
 		
 		cordinate = self.cords[self.oppbl.index(wid)]
-		print(cordinate)
 		
 		# asking opponent's client if sent cordinate is a hit or miss
 		if sys.argv[1] == 'client':	
@@ -226,8 +207,7 @@ class game(Fl_Window):
 			
 		else:
 			info = cordinate[0]+cordinate[1]+'a'
-			self.conn.sendall(info.encode())
-			print(info) # telling oppnent's client its asking for hit or miss
+			self.conn.sendall(info.encode()) # telling oppnent's client its asking for hit or miss
 			
 		if self.turn == 'server':
 			self.turn = 'client'
