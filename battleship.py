@@ -54,10 +54,7 @@ class game(Fl_Window):
 		# delete this too
 		self.confirm.hide()
 		
-		conn_to_client = None
-		
-		host = 'localhost'
-		port = 5555
+
 		self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM) #fd=3
 		if sys.argv[1] == 'server':
 			self.sock.bind((sys.argv[2],int(sys.argv[3])))
@@ -106,27 +103,29 @@ class game(Fl_Window):
 				return None
 		print('this is data')
 		print(data)
-		try: 
+
+		if len(data) >= 3:
 			info = [data[0],data[1],data[2]] # sending delay may be created
-		except:
+		else:
 			if len(self.total_data) >= 3:
 				data = self.total_data[0]+self.total_data[1]+self.total_data[2] # formulate complete message
 				self.total_data = []
 				return None
 			for x in data:
 				self.total_data.append(x)
-			
-			return None
-			
-		if self.game_state == 'Attacking':
-			if sys.argv[1] == 'server':
-				self.turn = 'server'
-			else:
-				self.turn = 'client'
+				
+				return None
+		if data[2] == 'a':
+			if self.game_state == 'Attacking':
+				if sys.argv[1] == 'server':
+					self.turn = 'server'
+				else:
+					self.turn = 'client'
 
 			if data[2] == 'h':
 				self.oppbl[self.cords.index([data[0],data[1]])].image(self.hitimg)
-				self.ships_taken_out.append([data[0],data[1]])
+				if [data[0],data[1]] not in self.ships_taken_out:
+					self.ships_taken_out.append([data[0],data[1]])
 				if len(self.ships_taken_out) == 4:
 					self.game_state = 'Over'
 					if sys.argv[1] == 'server':
@@ -175,7 +174,7 @@ class game(Fl_Window):
 			elif data[0] == 'L':
 				fl_message('You Lose')
 		
-		
+		self.redraw()
 		print(info)
 		print(self.game_state)
 		
